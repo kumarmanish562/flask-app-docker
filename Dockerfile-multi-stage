@@ -1,0 +1,38 @@
+# ---------------------- Stage 1: Builder ----------------------
+# Use a lightweight Python 3.9 image to install dependencies
+FROM python:3.9-slim AS builder
+
+# Set working directory inside container
+WORKDIR /app
+
+# Copy all files from parent directory (⚠️ this copies EVERYTHING)
+COPY . .
+
+# Install Python dependencies listed in requirements.txt
+# --target=/app/deps installs them into a custom folder instead of system site-packages
+RUN pip install -r requirements.txt --target=/app/deps
+
+
+# ---------------------- Stage 2: Final Image ----------------------
+# Use distroless image (very small, secure, no shell)
+FROM gcr.io/distroless/python3-debian12
+
+# Set working directory
+WORKDIR /app
+
+# Copy installed dependencies from builder stage
+COPY --from=builder /app/deps /app/deps
+
+# Copy application code from builder stage
+COPY --from=builder /app .
+
+# Set Python path so app can find dependencies in /app/deps
+ENV PYTHONPATH="/app/deps"
+
+# Expose port 80 (application expected to run on this port)
+EXPOSE 80
+
+# Start the application using Python
+# ⚠️ This runs run.py file
+CMD [ "run.py"]
+
